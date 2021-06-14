@@ -39,8 +39,8 @@ class aho_corasick
     public:
         void add_word( std::string word);
         trie_node* find_word( std::string word); //temporary
-        void init();
         void find_all_entries( std::string text);
+        virtual void init();
     //private:
         trie_node root;
         trie_node* current_state = &root;
@@ -51,5 +51,9 @@ class aho_corasick
 
         void step( char character, int index);
 };
+
+
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////
