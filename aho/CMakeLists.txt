@@ -1,16 +1,18 @@
 cmake_minimum_required(VERSION 3.10)
 
-option(RAW "cpu" ON)
+find_package(OpenCL REQUIRED)
+
+option(RAW "cpu" OFF)
 option(OCL "ocl" OFF)
 
 if (RAW)
-    message("Building cpu version")
+    message("Building OCL version")
     add_executable(raw raw_aho.cpp)
 endif(RAW)
 
 if (OCL)
-    add_library( OCL_diag STATIC OCL_diag.cpp)
-    target_include_directories(OCL_diag PUBLIC ../core)
-    target_include_directories(OCL_diag PUBLIC ../OpenCL)
-    target_link_libraries(OCL_diag OpenCL::OpenCL)
+    message("Building OCL version")
+    add_executable(ocl ocl_aho.cpp)
+    target_include_directories(ocl PUBLIC ../OpenCL)
+    target_link_libraries(ocl OpenCL::OpenCL)
 endif(OCL)
