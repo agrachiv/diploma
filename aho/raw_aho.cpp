@@ -3,6 +3,13 @@
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////debug///////////////////////////////////
 
+trie_node::trie_node( trie_node* parrent = nullptr, bool is_terminal = false) : parrent( parrent), is_terminal( is_terminal)
+{
+    if ( parrent != nullptr)
+        depth = parrent->depth + 1;
+}
+
+
 void trie_node::print_word_backwards()
 {
     if ( parrent != nullptr)
@@ -109,6 +116,7 @@ void aho_corasick::add_word( std::string word)
         if ( search == current_node->child_links.end())
         {
             trie_node* child_node = new trie_node( current_node, is_terminal);
+            number_of_nodes++;
             current_node->child_links.insert( {*character_it, child_node});
             current_node = child_node;
             if ( is_terminal == true)
