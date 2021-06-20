@@ -8,25 +8,26 @@
 #include <sstream>
 #include <iterator>
 
-struct trie_node
+struct Trie_node
 {
-    trie_node( trie_node* parrent, bool is_terminal);
-    std::unordered_map<char, trie_node*> child_links;
-    //std::unordered_map<const char, trie_node*> child_links; why that doesn't work?
-    trie_node* parrent;
-    trie_node* suffix_link = nullptr;
-    trie_node* terminal_link = nullptr;
+    Trie_node( Trie_node* parrent = nullptr, bool is_terminal = false);
+    std::unordered_map<char, Trie_node*> child_links;
+    //std::unordered_map<const char, Trie_node*> child_links; why that doesn't work?
+    Trie_node* parrent;
+    Trie_node* suffix_link = nullptr;
+    Trie_node* terminal_link = nullptr;
     bool is_terminal;
-    int vocabluary_index = -1;
+    int dictionary_index = -1;
     int depth = 0;
 
+    bool is_leaf() { return child_links.size() == 0 ? true : false; }
     ////////////////////////////////////debug////////////////////////////////////////////
     void print_word_backwards();
     char get_character();
     /////////////////////////////////////////////////////////////////////////////////////
 };
 
-struct vocabluary_info
+struct Dictionary_info
 {
     std::vector< std::string> words;
     std::vector< int> number_of_entries;
@@ -35,19 +36,23 @@ struct vocabluary_info
     void print();
 };
 
-class aho_corasick
+class Aho_corasick
 {
     public:
+        Aho_corasick() {}
+        Aho_corasick( std::string text) : text( text) {}
         void add_word( std::string word);
-        trie_node* find_word( std::string word); //temporary
+        Trie_node* find_word( std::string word); //temporary
         void find_all_entries( std::string text);
         int size() { return number_of_nodes; }
+        Trie_node* get_root_ptr() { return &root; };
         virtual void init();
     //private:
-        trie_node root;
-        trie_node* current_state = &root;
-        vocabluary_info vocabluary; 
+        Trie_node root;
+        Trie_node* current_state = &root;
+        Dictionary_info dictionary; 
         int number_of_nodes = 1;
+        std::string text;
 
         void calculate_suffix_links();
         void calculate_terminal_links();

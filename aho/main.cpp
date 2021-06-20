@@ -2,7 +2,7 @@
 
 int main()
 {
-    aho_corasick test;
+    Aho_corasick test;
 
     test.add_word("abccba");
     test.add_word("aabba");
@@ -47,13 +47,19 @@ int main()
     test.find_all_entries(test_string_1);
     std::cout << numbers << std::endl;
     std::cout << test_string_1 << std::endl;
-    test.vocabluary.print();
+    test.dictionary.print();
     */
+
+    std::string test_string_3 = "XXAAATCGAAAA";
     
-    test.find_all_entries(test_string_2);
+    Aho_corasick test2;
+    test2.add_word( "XAAA");
+    test2.add_word( "XAAATCG");
+    test2.init();
+    test2.find_all_entries(test_string_3);
     std::cout << numbers << std::endl;
-    std::cout << test_string_2 << std::endl;
-    test.vocabluary.print();
+    std::cout << test_string_3 << std::endl;
+    test2.dictionary.print();
 
     return 0;
 }

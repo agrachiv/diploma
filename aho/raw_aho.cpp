@@ -3,14 +3,14 @@
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////debug///////////////////////////////////
 
-trie_node::trie_node( trie_node* parrent = nullptr, bool is_terminal = false) : parrent( parrent), is_terminal( is_terminal)
+Trie_node::Trie_node( Trie_node* parrent, bool is_terminal) : parrent( parrent), is_terminal( is_terminal)
 {
     if ( parrent != nullptr)
         depth = parrent->depth + 1;
 }
 
 
-void trie_node::print_word_backwards()
+void Trie_node::print_word_backwards()
 {
     if ( parrent != nullptr)
     {
@@ -21,7 +21,7 @@ void trie_node::print_word_backwards()
     }
 }
 
-char trie_node::get_character()
+char Trie_node::get_character()
 {
     if (this->parrent == nullptr)
     {
@@ -37,9 +37,9 @@ char trie_node::get_character()
 }
 
 ///////////////////////////////////////////////////////////////////////
-/////////////////////////vocabluary_info///////////////////////////////
+/////////////////////////Dictionary_info///////////////////////////////
 
-void vocabluary_info::print()
+void Dictionary_info::print()
 {
     std::cout << "Search words are:" << std::endl;
     for ( int i = 0; i < words.size(); i++)
@@ -56,17 +56,17 @@ void vocabluary_info::print()
 }
 
 ///////////////////////////////////////////////////////////////////////
-//////////////////////////aho_corasick/////////////////////////////////
+//////////////////////////Aho_corasick/////////////////////////////////
 
-void aho_corasick::init() 
+void Aho_corasick::init() 
 {
-    vocabluary.number_of_entries.resize( vocabluary.words.size());
-    vocabluary.entries.resize( vocabluary.words.size());
+    dictionary.number_of_entries.resize( dictionary.words.size());
+    dictionary.entries.resize( dictionary.words.size());
     calculate_suffix_links();
     calculate_terminal_links();
 }
 
-void aho_corasick::find_all_entries( std::string text) 
+void Aho_corasick::find_all_entries( std::string text) 
 {
     int index = 0;
     for ( auto c = text.cbegin(); c != text.cend(); ++c, index++)
@@ -75,23 +75,23 @@ void aho_corasick::find_all_entries( std::string text)
     }
 }
 
-void aho_corasick::step( char character, int index)
+void Aho_corasick::step( char character, int index)
 {
     while ( current_state != nullptr)
     {
         if ( current_state->is_terminal == true)
         {
-            vocabluary.number_of_entries.at( current_state->vocabluary_index)++;
-            vocabluary.entries.at( current_state->vocabluary_index).push_back( index);
+            dictionary.number_of_entries.at( current_state->dictionary_index)++;
+            dictionary.entries.at( current_state->dictionary_index).push_back( index);
         }
         for (
-              trie_node* terminal_search_state = current_state->terminal_link;
+              Trie_node* terminal_search_state = current_state->terminal_link;
               terminal_search_state != nullptr;
               terminal_search_state = terminal_search_state->terminal_link
             )
         {
-            vocabluary.number_of_entries.at( terminal_search_state->vocabluary_index)++;
-            vocabluary.entries.at( terminal_search_state->vocabluary_index).push_back( index);
+            dictionary.number_of_entries.at( terminal_search_state->dictionary_index)++;
+            dictionary.entries.at( terminal_search_state->dictionary_index).push_back( index);
         }
         auto candidate = current_state->child_links.find( character);
         std::cout << "Character " << character << " bor_state " << current_state->get_character() << std::endl;
@@ -103,26 +103,26 @@ void aho_corasick::step( char character, int index)
         else
             current_state = current_state->suffix_link;
     }
-    current_state = &root;
+    current_state = get_root_ptr();
 }
 
-void aho_corasick::add_word( std::string word)
+void Aho_corasick::add_word( std::string word)
 {
-    trie_node* current_node = &root;
+    Trie_node* current_node = get_root_ptr();
     for ( auto character_it = word.cbegin(); character_it != word.cend(); ++character_it)
     {
         auto search = current_node->child_links.find( *character_it);
         bool is_terminal = ( std::next( character_it) == word.cend() ? true : false);
         if ( search == current_node->child_links.end())
         {
-            trie_node* child_node = new trie_node( current_node, is_terminal);
+            Trie_node* child_node = new Trie_node( current_node, is_terminal);
             number_of_nodes++;
             current_node->child_links.insert( {*character_it, child_node});
             current_node = child_node;
             if ( is_terminal == true)
             {
-                current_node->vocabluary_index = vocabluary.words.size();
-                vocabluary.words.push_back( word);
+                current_node->dictionary_index = dictionary.words.size();
+                dictionary.words.push_back( word);
             }
         } 
         else 
@@ -131,32 +131,32 @@ void aho_corasick::add_word( std::string word)
             if ( is_terminal == true && current_node->is_terminal == false)
             {
                 current_node->is_terminal = true;
-                current_node->vocabluary_index = vocabluary.words.size();
-                vocabluary.words.push_back( word);
+                current_node->dictionary_index = dictionary.words.size();
+                dictionary.words.push_back( word);
             }
         }
     }
 }
 
-void aho_corasick::calculate_suffix_links()
+void Aho_corasick::calculate_suffix_links()
 {
     //breadth-first search
-    std::queue<trie_node*> search_queue;
+    std::queue<Trie_node*> search_queue;
     root.suffix_link = nullptr;
     for ( const auto& [character, child_node] : root.child_links)
     {
-        child_node->suffix_link = &root;
+        child_node->suffix_link = get_root_ptr();
         search_queue.push( child_node);
     }
     while ( search_queue.empty() == false)
     {
-        trie_node* current_node = search_queue.front();
+        Trie_node* current_node = search_queue.front();
         search_queue.pop();
         for ( const auto& [character, child_node] : current_node->child_links)
         {
-            trie_node* potentional_suffix_parrent = current_node->suffix_link;
+            Trie_node* potentional_suffix_parrent = current_node->suffix_link;
             auto potentional_suffix_it = potentional_suffix_parrent->child_links.find( character);
-            while ( potentional_suffix_it == potentional_suffix_parrent->child_links.end() && potentional_suffix_parrent != &root)
+            while ( potentional_suffix_it == potentional_suffix_parrent->child_links.end() && potentional_suffix_parrent != get_root_ptr())
             {
                 potentional_suffix_parrent = potentional_suffix_parrent->suffix_link;
                 potentional_suffix_it = potentional_suffix_parrent->child_links.find( character);
@@ -164,28 +164,28 @@ void aho_corasick::calculate_suffix_links()
             if ( potentional_suffix_it != potentional_suffix_parrent->child_links.end())
                 child_node->suffix_link = potentional_suffix_it->second;
             else
-                child_node->suffix_link = &root;
+                child_node->suffix_link = get_root_ptr();
             search_queue.push( child_node);
         }
     }
 }
 
-void aho_corasick::calculate_terminal_links() //do for breath-first search?
+void Aho_corasick::calculate_terminal_links() //do for breath-first search?
 {
     //breadth-first search
-    std::queue<trie_node*> search_queue;
+    std::queue<Trie_node*> search_queue;
     root.terminal_link = nullptr;
 
     for ( const auto& [character, child_node] : root.child_links)
         search_queue.push( child_node);
     while ( search_queue.empty() == false)
     {
-        trie_node* current_node = search_queue.front();
+        Trie_node* current_node = search_queue.front();
         search_queue.pop();
 
         if ( current_node->suffix_link->is_terminal == true)
             current_node->terminal_link = current_node->suffix_link;
-        else if ( current_node->suffix_link != &root)
+        else if ( current_node->suffix_link != get_root_ptr())
             current_node->terminal_link = current_node->suffix_link->terminal_link;
 
         for ( const auto& [character, child_node] : current_node->child_links)
@@ -193,9 +193,9 @@ void aho_corasick::calculate_terminal_links() //do for breath-first search?
     }
 }
 
-trie_node* aho_corasick::find_word( std::string word)
+Trie_node* Aho_corasick::find_word( std::string word)
 {
-    trie_node* current_node = &root;
+    Trie_node* current_node = get_root_ptr();
     for ( auto it = word.cbegin(); it != word.cend(); ++it)
     {
         auto search = current_node->child_links.find(*it);

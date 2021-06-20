@@ -1,6 +1,6 @@
 #include "ocl_aho.h"
 
-void ocl_aho_corasick::set_platform()
+void Ocl_aho_corasick::set_platform()
 {
     std::vector<cl::Platform> platforms;
     cl::Platform::get( &platforms);
@@ -18,7 +18,7 @@ void ocl_aho_corasick::set_platform()
     std::cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
 }
 
-void ocl_aho_corasick::set_device()
+void Ocl_aho_corasick::set_device()
 {
     std::vector<cl::Device> devices;
     platform.getDevices( CL_DEVICE_TYPE_GPU, &devices);
@@ -27,11 +27,11 @@ void ocl_aho_corasick::set_device()
     std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
 }
 
-void ocl_aho_corasick::set_context() { context = cl::Context( device); } 
+void Ocl_aho_corasick::set_context() { context = cl::Context( device); } 
 
-void ocl_aho_corasick::set_command_queue() { command_queue = cl::CommandQueue( context, device); } //3 param?
+void Ocl_aho_corasick::set_command_queue() { command_queue = cl::CommandQueue( context, device); } //3 param?
 
-void ocl_aho_corasick::build_kernel()
+void Ocl_aho_corasick::build_kernel()
 {
     std::ifstream kernel_file( "kernel.cl");
     assert( kernel_file.is_open() && "Can't open file kernel.cl");
@@ -50,20 +50,131 @@ void ocl_aho_corasick::build_kernel()
     }
 }
 
-void ocl_aho_corasick::init()
+void Ocl_aho_corasick::init()
 {
-    vocabluary.number_of_entries.resize( vocabluary.words.size());
-    vocabluary.entries.resize( vocabluary.words.size());
+    dictionary.number_of_entries.resize( dictionary.words.size());
+    dictionary.entries.resize( dictionary.words.size());
     set_platform();
     set_device();
     set_context();
     build_kernel();
-    init_transition_table();
+}
+
+void Ocl_aho_corasick::run_kernel()
+{
     set_command_queue();
 
-    
-    for ( auto& i : transition_table)
+    Transition_table transition_table( this);
+    transition_table.init();
+    //transition_table.print();
+
+    std::string matched_patterns( text.size() * dictionary.words.size(), '0');
+    std::vector<int> debug( text.size(), -99);
+
+    try
     {
+        cl::Buffer transition_table_buffer = create_buffer<Transition_table>( transition_table);
+        cl::Buffer matched_patterns_buffer = create_buffer<std::string>( matched_patterns);
+        cl::Buffer text_buffer = create_buffer<std::string>( text);
+        cl::Buffer debug_buffer = create_buffer<std::vector<int>>( debug);
+
+        cl::Kernel kernel(program, "Find_matches");
+
+        kernel.setArg( 0, transition_table_buffer);
+        kernel.setArg( 1, matched_patterns_buffer);
+        kernel.setArg( 2, text_buffer);
+        kernel.setArg( 3, dictionary.words.size());
+        kernel.setArg( 4, text.size());
+        kernel.setArg( 5, debug_buffer);
+
+
+        run_event( kernel, text.size(), 1);
+        
+        cl::copy ( command_queue, matched_patterns_buffer, matched_patterns.begin(), matched_patterns.end());
+        cl::copy ( command_queue, debug_buffer, debug.begin(), debug.end());
+
+        //temoprary print// 
+        std::cout << "Text: " << text << std::endl << "Patterns to search:" << std::endl;
+        for ( auto& i : dictionary.words)
+            std::cout << i << std::endl;
+
+        std::cout << "w1|w2|w3|w4 | found at index" << std::endl;
+        std::cout << "---------------------------- " << std::endl;
+        for ( int i = 0; i < matched_patterns.size(); i+=dictionary.words.size())
+        {
+            for ( int j = 0; j < dictionary.words.size(); j++)
+            {
+                std::cout << matched_patterns[i+j] << "  ";
+            }
+            std::cout << "|      " << i/4 << std::endl;
+        }
+        ///////////////////
+    }
+    catch ( cl::Error err)
+    {
+        std::cout << std::endl << err.what() << " : " << err.err() << std::endl;
+    }
+}
+
+void Ocl_aho_corasick::run_event( const cl::Kernel& kernel, const cl::NDRange& glob_sz, const cl::NDRange& loc_sz)
+{
+    cl::Event event;
+    command_queue.enqueueNDRangeKernel( kernel , 0, glob_sz , loc_sz , nullptr, &event);
+    event.wait();
+}
+
+//template cl::Buffer Ocl_aho_corasick::create_buffer<std::string>( std::string); //Ask Kostya
+
+void Transition_table::init()
+{
+    int number_of_state = 0;
+    vector_data = std::vector<std::vector<std::pair< int, int>>>( ocl_aho_corasick->size(), std::vector<std::pair< int, int>>( std::numeric_limits<char>::max() + 1, std::make_pair( 0, 0))); //split
+    write_states( ocl_aho_corasick->get_root_ptr(), &number_of_state);
+    vector_data.erase( vector_data.end() - ocl_aho_corasick->dictionary.words.size() + 1, vector_data.end());
+
+    for ( auto& raw : vector_data)
+    {
+        for ( auto& [next_state, pattern_number] : raw)
+        {
+            contiguous_data.push_back( next_state);
+            contiguous_data.push_back( pattern_number);
+        }
+    }
+    assert( contiguous_data.size() == vector_data.size() * (std::numeric_limits<char>::max() + 1) * 2 && "Corrupted buffer");
+}
+
+void Transition_table::write_states( Trie_node* state, int* number_of_state)
+{
+    int current_state = *number_of_state;
+    for ( auto& [symbol, child_state] : state->child_links)
+    {
+        if ( child_state->is_terminal == false)
+        {
+            vector_data.at( current_state).at( symbol) = std::make_pair( ++(*number_of_state), 0);
+            write_states( child_state, number_of_state);
+        } 
+        else
+        {
+            int matched_pattern_id = child_state->dictionary_index + 1;
+            if ( child_state->is_leaf() == false)
+            {
+                vector_data.at( current_state).at( symbol) = std::make_pair( ++(*number_of_state), matched_pattern_id);
+                write_states( child_state, number_of_state);
+            }
+            else
+            {
+                vector_data.at( current_state).at( symbol) = std::make_pair( TERMINAL, matched_pattern_id);
+            }
+        }
+    }
+}
+
+void Transition_table::print()
+{
+    int index = 0;    
+    for ( auto& i : vector_data)
+    {
+        std::cout << index << ") ";
         for ( int j = 0; j < i.size(); j++)
         {
             int a = i[j].first;
@@ -72,55 +183,6 @@ void ocl_aho_corasick::init()
                 std::cout << (char)j << "[" << a << "," << b << "] ";
         }
         std::cout << std::endl;
-    }
-    std::string stupid_string( "0123456789012");
-    std::cout << stupid_string.size() << std::endl;
-    cl::Buffer hello_world_buffer = create_buffer<std::string>( stupid_string);
-
-    cl::Kernel kernel(program, "HelloWorld");
-    kernel.setArg(0, hello_world_buffer);
-
-    cl::Event event;
-    int err = command_queue.enqueueNDRangeKernel( kernel, 0, 1, 1, nullptr, &event);
-    assert( err == CL_SUCCESS && "Can't create buffer");
-    char returned_string[16];
-    //assert( sizeof(returned_string) == stupid_string.size() * sizeof( stupid_string.front()));
-    std::cout << "1 " << sizeof(returned_string) << std::endl << "2 " << stupid_string.size() * sizeof( stupid_string.front()) << std::endl;
-    command_queue.enqueueReadBuffer( hello_world_buffer, CL_TRUE, 0, stupid_string.size() * sizeof( stupid_string.front()), returned_string);
-    //std::cin.get();
-    std::cout << returned_string;
-}
-
-void ocl_aho_corasick::run_event( const cl::Kernel& kernel, const cl::NDRange& loc_sz, const cl::NDRange& glob_sz)
-{
-    cl::Event event;
-    command_queue.enqueueNDRangeKernel( kernel , 0 , glob_sz , loc_sz , nullptr , &event);
-    event.wait();
-}
-
-//template cl::Buffer ocl_aho_corasick::create_buffer<std::string>( std::string); //Ask Kostya
-
-void ocl_aho_corasick::init_transition_table()
-{
-    int number_of_state = 0;
-    transition_table = std::vector<std::vector<std::pair< int, int>>>( size(), std::vector<std::pair< int, int>>( std::numeric_limits<char>::max(), std::make_pair( 0, 0))); //split
-    write_states( &root, &number_of_state);
-}
-
-void ocl_aho_corasick::write_states( trie_node* state, int* number_of_state)
-{
-    for ( auto& [symbol, child_state] : state->child_links)
-    {
-        std::cout << "|" << (char)symbol << "|" << std::endl;
-        if ( child_state->is_terminal == false)
-        {
-            transition_table.at( state->depth).at( symbol) = std::make_pair( ++(*number_of_state), 0);
-            write_states( child_state, number_of_state);
-        } 
-        else
-        {
-            int matched_pattern_id = child_state->vocabluary_index + 1;
-            transition_table.at( state->depth).at( symbol) = std::make_pair( ++(*number_of_state), matched_pattern_id);
-        }
+        index++;
     }
 }
