@@ -11,7 +11,7 @@ int main()
     test.add_word("acdab");
     test.add_word("cdab");
     test.add_word("bc");
-
+    test.set_text("abccbaaabbacda");
     test.init();
     
     assert( test.root.suffix_link == nullptr && "broken suffix link");
@@ -40,15 +40,12 @@ int main()
     assert( test.find_word("abccba")->is_terminal == true   && "broken terminal flag");
 
     std::string numbers       = "01234567890123";
-    //std::string test_string_1 = "abababababababc";
-    std::string test_string_2 = "abccbaaabbacda";
+    std::string test_string_1 = "abccbaaabbacda";
 
-    /*
-    test.find_all_entries(test_string_1);
     std::cout << numbers << std::endl;
     std::cout << test_string_1 << std::endl;
     test.dictionary.print();
-    */
+    /*
 
     std::string test_string_3 = "XXAAATCGAAAA";
     
@@ -60,6 +57,16 @@ int main()
     std::cout << numbers << std::endl;
     std::cout << test_string_3 << std::endl;
     test2.dictionary.print();
+ 
+
+    Aho_corasick test2;
+    test2.add_word( "cab");
+    //test2.add_word( "cabcab");
+    test2.set_text( "cabcabcabcabcabcabcab");
+    test2.init();
+    test2.find_all_entries();
+    test2.dictionary.print();
+   */
 
     return 0;
 }

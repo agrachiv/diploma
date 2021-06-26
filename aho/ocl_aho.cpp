@@ -25,6 +25,7 @@ void Ocl_aho_corasick::set_device()
     assert( devices.size() != 0 && "No devices found");
     device = devices[0];
     std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+    std::cout << "Local memory size: " << device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
 }
 
 void Ocl_aho_corasick::set_context() { context = cl::Context( device); } 
@@ -40,7 +41,7 @@ void Ocl_aho_corasick::build_kernel()
     try
     {
         std::ostringstream options;
-        //options << " -D OPTION_NAME=" << value;
+        options << " -Werror";
         program.build( options.str().data());
     }
     catch ( cl::Error error)
@@ -48,16 +49,6 @@ void Ocl_aho_corasick::build_kernel()
         std::cout << "Kernel build failed: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>( device) << std::endl;
         exit(1);
     }
-}
-
-void Ocl_aho_corasick::init()
-{
-    dictionary.number_of_entries.resize( dictionary.words.size());
-    dictionary.entries.resize( dictionary.words.size());
-    set_platform();
-    set_device();
-    set_context();
-    build_kernel();
 }
 
 void Ocl_aho_corasick::run_kernel()
@@ -68,47 +59,31 @@ void Ocl_aho_corasick::run_kernel()
     transition_table.init();
     //transition_table.print();
 
-    std::string matched_patterns( text.size() * dictionary.words.size(), '0');
-    std::vector<int> debug( text.size(), -99);
+    matched_patterns = std::string( text.size() * dictionary.words.size(), '0');
+    //debug = std::vector<int>( text.size(), -99);
 
     try
     {
-        cl::Buffer transition_table_buffer = create_buffer<Transition_table>( transition_table);
-        cl::Buffer matched_patterns_buffer = create_buffer<std::string>( matched_patterns);
-        cl::Buffer text_buffer = create_buffer<std::string>( text);
-        cl::Buffer debug_buffer = create_buffer<std::vector<int>>( debug);
+        cl::Buffer transition_table_buffer = create_buffer<Transition_table>( transition_table, CL_MEM_READ_ONLY);
+        cl::Buffer text_buffer = create_buffer<std::string>( text, CL_MEM_READ_ONLY);
+        cl::Buffer matched_patterns_buffer = create_buffer<std::string>( matched_patterns, CL_MEM_READ_WRITE);
+        //cl::Buffer debug_buffer = create_buffer<std::vector<int>>( debug, CL_MEM_READ_WRITE);
 
-        cl::Kernel kernel(program, "Find_matches");
+        kernel = cl::Kernel( program, "Find_matches");
 
         kernel.setArg( 0, transition_table_buffer);
         kernel.setArg( 1, matched_patterns_buffer);
         kernel.setArg( 2, text_buffer);
         kernel.setArg( 3, dictionary.words.size());
         kernel.setArg( 4, text.size());
-        kernel.setArg( 5, debug_buffer);
-
+        //kernel.setArg( 5, debug_buffer);
 
         run_event( kernel, text.size(), 1);
-        
-        cl::copy ( command_queue, matched_patterns_buffer, matched_patterns.begin(), matched_patterns.end());
-        cl::copy ( command_queue, debug_buffer, debug.begin(), debug.end());
 
-        //temoprary print// 
-        std::cout << "Text: " << text << std::endl << "Patterns to search:" << std::endl;
-        for ( auto& i : dictionary.words)
-            std::cout << i << std::endl;
-
-        std::cout << "w1|w2|w3|w4 | found at index" << std::endl;
-        std::cout << "---------------------------- " << std::endl;
-        for ( int i = 0; i < matched_patterns.size(); i+=dictionary.words.size())
-        {
-            for ( int j = 0; j < dictionary.words.size(); j++)
-            {
-                std::cout << matched_patterns[i+j] << "  ";
-            }
-            std::cout << "|      " << i/4 << std::endl;
-        }
-        ///////////////////
+        cl::copy( command_queue, matched_patterns_buffer, matched_patterns.begin(), matched_patterns.end());
+        //cl::copy( command_queue, debug_buffer, debug.begin(), debug.end());
+        command_queue.finish();
+        process_resulted_buffer( matched_patterns);
     }
     catch ( cl::Error err)
     {
@@ -116,11 +91,51 @@ void Ocl_aho_corasick::run_kernel()
     }
 }
 
+void Ocl_aho_corasick::init()
+{
+    assert( dictionary.words.size() != 0 && text.size() != 0 &&
+            "Run set_text() and add_word() methods before calling init()");
+    dictionary.number_of_entries.resize( dictionary.words.size());
+    dictionary.entries.resize( dictionary.words.size());
+    set_platform();
+    set_device();
+    set_context();
+    build_kernel();
+    run_kernel();
+}
+
 void Ocl_aho_corasick::run_event( const cl::Kernel& kernel, const cl::NDRange& glob_sz, const cl::NDRange& loc_sz)
 {
     cl::Event event;
-    command_queue.enqueueNDRangeKernel( kernel , 0, glob_sz , loc_sz , nullptr, &event);
+    print_address_device_bits();
+    command_queue.enqueueNDRangeKernel( kernel , 0, glob_sz , loc_sz, nullptr, &event);
     event.wait();
+}
+
+void Ocl_aho_corasick::process_resulted_buffer( std::string matched_patterns)
+{
+        for ( int i = 0; i < matched_patterns.size(); i+=dictionary.words.size())
+    {
+        assert( i % dictionary.words.size() == 0 && "Corrupted mathed_patterns buffer");
+        int text_index = i / dictionary.words.size();
+        for ( int pattern_number = 0; pattern_number < dictionary.words.size(); pattern_number++)
+        {
+            if ( matched_patterns[i + pattern_number] == '1')
+            {
+                dictionary.entries.at( pattern_number).push_back( text_index);
+                dictionary.number_of_entries.at( pattern_number)++;
+            }
+        }
+    }
+}
+
+void Ocl_aho_corasick::print_address_device_bits()
+{
+    size_t size;
+    cl_uint address_bits;
+    clGetDeviceInfo( device(), CL_DEVICE_ADDRESS_BITS, 0, NULL, &size);
+    clGetDeviceInfo( device(), CL_DEVICE_ADDRESS_BITS, size, &address_bits, NULL);
+    std::cout <<  "Device address space size: " << size << " bits: " << address_bits << std::endl;
 }
 
 //template cl::Buffer Ocl_aho_corasick::create_buffer<std::string>( std::string); //Ask Kostya

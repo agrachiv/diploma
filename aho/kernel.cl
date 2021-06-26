@@ -1,11 +1,9 @@
 __kernel void Find_matches(
-    __global char* transition_table,
+    __constant char* transition_table,
     __global char* matched_patterns,
-    __global char* text,
+    __constant char* text,
     int dictionary_size,
-    int text_size,
-    __global int* debug
-    )
+    int text_size)
 {
     
     int id = get_global_id(0);
@@ -19,10 +17,7 @@ __kernel void Find_matches(
         if ( next_state != 0) //partial match
         {
             if ( matched_pattern != 0) //full pattern match
-            {
-                debug[id] = 1;
                 matched_patterns[ id * dictionary_size + matched_pattern - 1] = '1'; //mark as matched
-            }
             if ( next_state == -1)
                 break;
             state_index = next_state * 128 * 2;

@@ -33,7 +33,7 @@ char Trie_node::get_character()
             if ( it.second == this)
                 return it.first;
     }
-    assert( false && "something wetn wrong");
+    assert( false && "something went wrong");
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -44,15 +44,16 @@ void Dictionary_info::print()
     std::cout << "Search words are:" << std::endl;
     for ( int i = 0; i < words.size(); i++)
     {
-        std::cout << "Word '" << words[i] << "' found " << number_of_entries[i] << " times";
+        std::cout << i << ") Word '" << words[i] << "' found " << number_of_entries[i] << " times";
         if ( number_of_entries[i] != 0)
         {
             std::cout << " at positions: ";
             for ( auto& j : entries[i])
-                std::cout << j - words[i].length() << " ";
+                std::cout << j << " ";
         }
         std::cout << std::endl;
     }
+    std::cout << std::endl;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -60,13 +61,17 @@ void Dictionary_info::print()
 
 void Aho_corasick::init() 
 {
+    assert( dictionary.words.size() != 0 && text.size() != 0 &&
+            "Run set_text() and add_word() methods before calling init()");
     dictionary.number_of_entries.resize( dictionary.words.size());
     dictionary.entries.resize( dictionary.words.size());
     calculate_suffix_links();
     calculate_terminal_links();
+    find_all_entries();
+    fix_indexes();
 }
 
-void Aho_corasick::find_all_entries( std::string text) 
+void Aho_corasick::find_all_entries() 
 {
     int index = 0;
     for ( auto c = text.cbegin(); c != text.cend(); ++c, index++)
@@ -94,7 +99,6 @@ void Aho_corasick::step( char character, int index)
             dictionary.entries.at( terminal_search_state->dictionary_index).push_back( index);
         }
         auto candidate = current_state->child_links.find( character);
-        std::cout << "Character " << character << " bor_state " << current_state->get_character() << std::endl;
         if ( candidate != current_state->child_links.end())
         {
             current_state = candidate->second;
@@ -191,6 +195,14 @@ void Aho_corasick::calculate_terminal_links() //do for breath-first search?
         for ( const auto& [character, child_node] : current_node->child_links)
             search_queue.push( child_node);
     }
+}
+
+void Aho_corasick::fix_indexes()
+{
+    for ( int i = 0; i < dictionary.words.size(); i++)
+        if ( dictionary.number_of_entries[i] != 0)
+            for ( auto& j : dictionary.entries[i])
+                j -= dictionary.words[i].length();
 }
 
 Trie_node* Aho_corasick::find_word( std::string word)

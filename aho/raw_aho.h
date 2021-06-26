@@ -42,8 +42,8 @@ class Aho_corasick
         Aho_corasick() {}
         Aho_corasick( std::string text) : text( text) {}
         void add_word( std::string word);
+        void set_text( std::string input_text) { text = input_text;}
         Trie_node* find_word( std::string word); //temporary
-        void find_all_entries( std::string text);
         int size() { return number_of_nodes; }
         Trie_node* get_root_ptr() { return &root; };
         virtual void init();
@@ -56,6 +56,8 @@ class Aho_corasick
 
         void calculate_suffix_links();
         void calculate_terminal_links();
+        void find_all_entries();
+        void fix_indexes();
 
         void step( char character, int index);
 };

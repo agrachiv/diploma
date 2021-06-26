@@ -9,9 +9,9 @@ const int TERMINAL = -1;
 class Ocl_aho_corasick : public Aho_corasick
 {
     public:
+        Ocl_aho_corasick() {}
         Ocl_aho_corasick( std::string text) :  Aho_corasick( text) {}
         void init() override;
-        void run_kernel();
 
     private:
         cl::Platform platform;
@@ -19,16 +19,26 @@ class Ocl_aho_corasick : public Aho_corasick
         cl::Context context;
         cl::CommandQueue command_queue;
         cl::Program program;
+        cl::Kernel kernel;
+
+        cl::Buffer matched_patterns_buffer;
+        cl::Buffer debug_buffer;
+
+        std::string matched_patterns;
+        std::vector<int> debug;
 
         void set_platform();
         void set_device();
         void set_context();
         void set_command_queue();
         void build_kernel();
+        void run_kernel();
 
         template <typename T>
-        cl::Buffer create_buffer ( T& container);
+        cl::Buffer create_buffer ( T& container, cl_mem_flags flag);
         void run_event( const cl::Kernel& kernel, const cl::NDRange& loc_sz, const cl::NDRange& glob_sz);
+        void process_resulted_buffer( std::string matched_patterns);
+        void print_address_device_bits();
 };
 
 class Transition_table
@@ -38,9 +48,9 @@ class Transition_table
             : ocl_aho_corasick( ocl_aho_corasick) {};
         void init();
         void print();
-        char* data() { return contiguous_data.data();  }
-        int   size() { return contiguous_data.size();  }
-        auto front() { return contiguous_data.front(); }
+        const char* data() { return contiguous_data.data();  }
+        const int   size() { return contiguous_data.size();  }
+        const auto front() { return contiguous_data.front(); }
 
     private:
         Ocl_aho_corasick* ocl_aho_corasick;
@@ -51,22 +61,9 @@ class Transition_table
 };
 
 template <typename T>
-cl::Buffer Ocl_aho_corasick::create_buffer ( T& container)
+cl::Buffer Ocl_aho_corasick::create_buffer ( T& container, cl_mem_flags flag)
 {
-    std::cout << sizeof( container.front()) << std::endl;
-    cl::Buffer created_buffer( context, CL_MEM_READ_WRITE , container.size() * sizeof( container.front()));
+    cl::Buffer created_buffer( context, CL_MEM_READ_WRITE, container.size() * sizeof( container.front()));
     command_queue.enqueueWriteBuffer( created_buffer, CL_TRUE , 0 , container.size() * sizeof( container.front()), container.data());
     return created_buffer;
-}
-
-int main()
-{
-   Ocl_aho_corasick test( std::string( "XXAAATCGAAAA"));
-   test.add_word( "ACGCC");
-   test.add_word( "AAA");
-   test.add_word( "AAATCG");
-   test.add_word( "AAATTG");
-
-   test.init();
-   test.run_kernel();
 }
