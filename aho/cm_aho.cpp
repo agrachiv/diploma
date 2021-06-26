@@ -1,4 +1,4 @@
-#include "ocl_aho.h"
+#include "cm_aho.h"
 
 void Ocl_aho_corasick::run_event( const cl::Kernel& kernel, const cl::NDRange& glob_sz, const cl::NDRange& loc_sz)
 {
@@ -12,6 +12,7 @@ void Ocl_aho_corasick::run_event( const cl::Kernel& kernel, const cl::NDRange& g
 
 void Ocl_aho_corasick::run_kernel()
 {
+    /*
     set_command_queue();
 
     Transition_table transition_table( this);
@@ -48,10 +49,12 @@ void Ocl_aho_corasick::run_kernel()
     {
         std::cout << std::endl << err.what() << " : " << err.err() << std::endl;
     }
+    */
 }
 
 void Ocl_aho_corasick::build_kernel()
 {
+    /*
     std::ifstream kernel_file( "kernel.cl");
     assert( kernel_file.is_open() && "Can't open file kernel.cl");
     std::string kernel_code( std::istreambuf_iterator<char>( kernel_file), (std::istreambuf_iterator<char>())); //remove bracket?
@@ -67,4 +70,5 @@ void Ocl_aho_corasick::build_kernel()
         std::cout << "Kernel build failed: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>( device) << std::endl;
         exit(1);
     }
+    */
 }

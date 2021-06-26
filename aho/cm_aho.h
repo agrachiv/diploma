@@ -1,6 +1,6 @@
 #include "gpu_aho.h"
 
-class Ocl_aho_corasick : public Gpu_aho_corasick
+class Cm_aho_corasick : public Gpu_aho_corasick
 {
     public:
 

@@ -45,28 +45,6 @@ int main()
     std::cout << numbers << std::endl;
     std::cout << test_string_1 << std::endl;
     test.dictionary.print();
-    /*
-
-    std::string test_string_3 = "XXAAATCGAAAA";
     
-    Aho_corasick test2;
-    test2.add_word( "XAAA");
-    test2.add_word( "XAAATCG");
-    test2.init();
-    test2.find_all_entries(test_string_3);
-    std::cout << numbers << std::endl;
-    std::cout << test_string_3 << std::endl;
-    test2.dictionary.print();
- 
-
-    Aho_corasick test2;
-    test2.add_word( "cab");
-    //test2.add_word( "cabcab");
-    test2.set_text( "cabcabcabcabcabcabcab");
-    test2.init();
-    test2.find_all_entries();
-    test2.dictionary.print();
-   */
-
     return 0;
 }
