@@ -1,21 +1,23 @@
 #include "gpu_aho.h"
+#include <CL/cl2.hpp>
 
 void Gpu_aho_corasick::set_platform()
 {
     std::vector<cl::Platform> platforms;
     cl::Platform::get( &platforms);
     cl::Platform selected_platform;
+    
     for ( auto &p : platforms)
     {
         std::string platver = p.getInfo<CL_PLATFORM_VERSION>();
-        std::cout << platver << std::endl;
+        //std::cout << platver << std::endl;
         //if (platver.find("OpenCL 2.") != std::string::npos)
             selected_platform = p;
     }
     assert( selected_platform() != 0 && "No OpenCL 2.0 platform found.\n");
     platform = cl::Platform::setDefault( selected_platform);
     assert( platform == selected_platform && "Error setting default platform");
-    std::cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
+    //std::cout << "Using platform: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
 }
 
 void Gpu_aho_corasick::set_device()
@@ -24,8 +26,8 @@ void Gpu_aho_corasick::set_device()
     platform.getDevices( CL_DEVICE_TYPE_GPU, &devices);
     assert( devices.size() != 0 && "No devices found");
     device = devices[0];
-    std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-    std::cout << "Local memory size: " << device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
+    //std::cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+    //std::cout << "Local memory size: " << device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
 }
 
 void Gpu_aho_corasick::set_context() { context = cl::Context( device); } 
@@ -42,6 +44,7 @@ void Gpu_aho_corasick::init()
     set_device();
     set_context();
     build_kernel();
+    
     run_kernel();
 }
 
@@ -68,10 +71,8 @@ void Gpu_aho_corasick::print_address_device_bits()
     cl_uint address_bits;
     clGetDeviceInfo( device(), CL_DEVICE_ADDRESS_BITS, 0, NULL, &size);
     clGetDeviceInfo( device(), CL_DEVICE_ADDRESS_BITS, size, &address_bits, NULL);
-    std::cout <<  "Device address space size: " << size << " bits: " << address_bits << std::endl;
+    //std::cout <<  "Device address space size: " << size << " bits: " << address_bits << std::endl;
 }
-
-//template cl::Buffer Gpu_aho_corasick::create_buffer<std::string>( std::string); //Ask Kostya
 
 void Transition_table::init()
 {

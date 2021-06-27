@@ -1,3 +1,6 @@
+#ifndef RAW_AHO_H
+#define RAW_AHO_H
+
 #include <unordered_map>
 #include <string>
 #include <iostream>
@@ -6,6 +9,7 @@
 #include <utility>
 #include <fstream>
 #include <sstream>
+#include <ctime>
 #include <iterator>
 
 struct Trie_node
@@ -47,7 +51,8 @@ class Aho_corasick
         int size() { return number_of_nodes; }
         Trie_node* get_root_ptr() { return &root; };
         virtual void init();
-    //private:
+    //protected:
+        friend class Dictionary_info;
         Trie_node root;
         Trie_node* current_state = &root;
         Dictionary_info dictionary; 
@@ -61,3 +66,5 @@ class Aho_corasick
 
         void step( char character, int index);
 };
+
+#endif

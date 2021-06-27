@@ -1,21 +1,16 @@
-extern "C" _GENX_MAIN_ void
-find_matches(
-    __constant char* transition_table,
-    __global char* matched_patterns,
-    __constant char* text,
-    int dictionary_size,
-    int text_size)
-{
+#include <cm/cm.h>
 
+_GENX_MAIN_ void Find_matches(
+    //__constant char* transition_table,
+    //__global char* matched_patterns,
+    //__constant char* text,
+    //int dictionary_size,
+    //int text_size
+    )
+{
+    printf("TestTestTestTestTestTestTest");
     /*
     unsigned tid = cm_group_id(0) * cm_local_size(0) + cm_local_id(0);
-
-    vector<unsigned, 32> in0;
-    vector<unsigned, 32> in1;
-    read(ibuf0, tid * 32 * sizeof(unsigned), in0);
-    read(ibuf1, tid * 32 * sizeof(unsigned), in1);
-    vector<unsigned, 32> in2 = in0 + in1;
-    write(obuf,  tid * 32 * sizeof(unsigned), in2);
     */
 }
 

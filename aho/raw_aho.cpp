@@ -112,6 +112,7 @@ void Aho_corasick::step( char character, int index)
 
 void Aho_corasick::add_word( std::string word)
 {
+    assert( word.size() <= 256 && "Patterns longer than 256 are currently not supported");
     Trie_node* current_node = get_root_ptr();
     for ( auto character_it = word.cbegin(); character_it != word.cend(); ++character_it)
     {

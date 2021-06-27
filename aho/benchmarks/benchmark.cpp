@@ -1,5 +1,6 @@
 #include "benchmark/benchmark.h"
 #include "ocl_aho.h"
+#include "cm_aho.h"
 
 enum Test_result 
 { 
@@ -36,13 +37,12 @@ void setup_test( aho_type test_class, std::string data_file_name)
         std::getline( file_stream, word);
         test_class.add_word( word);
     }
+    test_class.init();
 }
 
 template<typename aho_type>
 int execute_test( aho_type test_class, std::string data_file_name)
 {
-    test_class.init();
-
     std::string data_file_path = "../test_data/" + data_file_name + "_ans";
     std::ifstream file_stream( data_file_path);
     assert( file_stream.is_open() && "Can't open file");
@@ -94,46 +94,55 @@ int execute_test( aho_type test_class, std::string data_file_name)
     }
     std::cout << "Test " << data_file_name << " passed!" << std::endl;
     std::cout << "----------------------------------------------------------" << std::endl << std::endl;
+    
     return TEST_PASSED;
 }
 
-int run_unit_test( int platform, std::string data_file_prefix)
+int run_unit_test( int platform, std::string data_file_prefix, bool perfomance_only = false)
 {
+    std::cout << data_file_prefix << std::endl;
     int test_results = TEST_PASSED;
     if ( platform == CPU || platform == ALL_PLATFORMS)
     {
         Aho_corasick cpu_test;
         std::cout << "Chosen platform CPU" << std::endl;
         setup_test<Aho_corasick&>( cpu_test, data_file_prefix);
-        test_results += execute_test<Aho_corasick&>( cpu_test, data_file_prefix);
+        if ( perfomance_only == false)
+            test_results += execute_test<Aho_corasick&>( cpu_test, data_file_prefix);
     }
     if ( platform == OCL || platform == ALL_PLATFORMS)
     {
         std::cout << "Chosen platform OpenCl" << std::endl;
         Ocl_aho_corasick ocl_test;
         setup_test<Ocl_aho_corasick&>( ocl_test, data_file_prefix);
-        test_results += execute_test<Ocl_aho_corasick&>( ocl_test, data_file_prefix);
+        if ( perfomance_only == false)
+            test_results += execute_test<Ocl_aho_corasick&>( ocl_test, data_file_prefix);
     }
-    if ( platform == CM)
+    if ( platform == CM || platform == ALL_PLATFORMS)
     {
-        //
+        std::cout << "Chosen platform CM" << std::endl;
+        Cm_aho_corasick cm_test;
+        setup_test<Cm_aho_corasick&>( cm_test, data_file_prefix);
+         if ( perfomance_only == false)
+            test_results += execute_test<Cm_aho_corasick&>( cm_test, data_file_prefix);
     }
-
     return test_results;
-}
-
-
-
-void basic_benchmark_gpu( benchmark::State& state)
-{ 
-    int a = 3 + 4;
 }
 
 int main()
 {
     int test_results = TEST_PASSED;
     test_results += run_unit_test( ALL_PLATFORMS, "simple_test_1");
+    test_results += run_unit_test( ALL_PLATFORMS, "test_long_string");
     test_results += run_unit_test( OCL, "simple_test_2");
+    test_results += run_unit_test( CM, "simple_test_2");
+
+    /*
+    run_unit_test( ALL_PLATFORMS, "genome_1000", true);
+    run_unit_test( ALL_PLATFORMS, "genome_500", true);
+    run_unit_test( ALL_PLATFORMS, "genome_100", true);
+    run_unit_test( ALL_PLATFORMS, "genome_50", true);
+    */
 
     std::cout << "==========================================================" << std::endl;
     if ( test_results == TEST_PASSED)

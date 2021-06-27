@@ -1,3 +1,6 @@
+#ifndef GPU_AHO_H
+#define GPU_AHO_H
+
 #define CL_HPP_ENABLE_EXCEPTIONS
 #define CL_HPP_TARGET_OPENCL_VERSION 210
 
@@ -63,7 +66,9 @@ class Transition_table
 template <typename T>
 cl::Buffer Gpu_aho_corasick::create_buffer ( T& container, cl_mem_flags flag)
 {
-    cl::Buffer created_buffer( context, CL_MEM_READ_WRITE, container.size() * sizeof( container.front()));
+    cl::Buffer created_buffer( context, flag, container.size() * sizeof( container.front()));
     command_queue.enqueueWriteBuffer( created_buffer, CL_TRUE , 0 , container.size() * sizeof( container.front()), container.data());
     return created_buffer;
 }
+
+#endif
